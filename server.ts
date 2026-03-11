@@ -7,9 +7,13 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import google from 'googlethis';
+import fs from 'fs';
+import AdmZip from 'adm-zip';
+import { execSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = process.env.DB_PATH || 'ollama-webui.db';
+const CURRENT_VERSION = 'account-update';
 const db = new Database(dbPath);
 
 // Initialize Database
@@ -151,6 +155,89 @@ app.get('/api/auth/me', authenticateToken, (req: any, res: any) => {
 });
 
 // Admin Routes
+app.get('/api/admin/check-updates', authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const response = await fetch('https://api.github.com/repos/Haaris-ai/ollama-ai-ui/releases/latest');
+    if (!response.ok) throw new Error('Failed to fetch latest release');
+    const data = await response.json();
+    const latestVersion = data.tag_name;
+    const updateAvailable = latestVersion !== CURRENT_VERSION;
+    res.json({ updateAvailable, latestVersion, releaseNotes: data.body, url: data.html_url });
+  } catch (error) {
+    console.error('Error checking for updates:', error);
+    res.status(500).json({ error: 'Failed to check for updates' });
+  }
+});
+
+app.post('/api/admin/apply-update', authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const response = await fetch('https://api.github.com/repos/Haaris-ai/ollama-ai-ui/releases/latest');
+    if (!response.ok) throw new Error('Failed to fetch latest release');
+    const data = await response.json();
+    
+    const asset = data.assets.find((a: any) => a.name === 'ollama-ai-ui-main.zip');
+    if (!asset) throw new Error('Update asset not found in the latest release');
+    
+    const zipResponse = await fetch(asset.browser_download_url);
+    if (!zipResponse.ok) throw new Error('Failed to download update zip');
+    
+    const arrayBuffer = await zipResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    const zipPath = path.join(__dirname, 'update.zip');
+    fs.writeFileSync(zipPath, buffer);
+    
+    const zip = new AdmZip(zipPath);
+    const extractPath = path.join(__dirname, 'update_extracted');
+    zip.extractAllTo(extractPath, true);
+    
+    const sourceDir = path.join(extractPath, 'ollama-ai-ui-main', 'ollama-ai-ui-main');
+    
+    if (!fs.existsSync(sourceDir)) {
+      throw new Error('Expected directory structure not found in the zip file');
+    }
+    
+    const copyRecursiveSync = (src: string, dest: string) => {
+      const exists = fs.existsSync(src);
+      const stats = exists && fs.statSync(src);
+      const isDirectory = exists && stats && stats.isDirectory();
+      if (isDirectory) {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest);
+        }
+        fs.readdirSync(src).forEach((childItemName) => {
+          copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
+        });
+      } else {
+        if (!dest.endsWith('.db') && !dest.endsWith('.env')) {
+          fs.copyFileSync(src, dest);
+        }
+      }
+    };
+    
+    copyRecursiveSync(sourceDir, __dirname);
+    
+    fs.unlinkSync(zipPath);
+    fs.rmSync(extractPath, { recursive: true, force: true });
+    
+    try {
+      execSync('npm install', { cwd: __dirname, stdio: 'ignore' });
+    } catch (e) {
+      console.error('npm install failed during update', e);
+    }
+    
+    res.json({ message: 'Update applied successfully. The server will now restart.' });
+    
+    setTimeout(() => {
+      process.exit(0);
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error applying update:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to apply update' });
+  }
+});
+
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req: any, res: any) => {
   const stmt = db.prepare('SELECT id, username, role, is_blocked, block_reason, block_expires_at FROM users ORDER BY id ASC');
   const users = stmt.all();

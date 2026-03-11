@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Settings as SettingsIcon, LogOut, Loader2, RefreshCw, Users, Shield, Ban, CheckCircle, X, Globe, MessageSquareText, Trash2, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, Settings as SettingsIcon, LogOut, Loader2, RefreshCw, Users, Shield, Ban, CheckCircle, X, Globe, MessageSquareText, Trash2, AlertTriangle, Bell, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 
@@ -46,6 +46,11 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   const [deleteUserModalOpen, setDeleteUserModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any>(null);
 
+  // Update State
+  const [updateInfo, setUpdateInfo] = useState<{updateAvailable: boolean, latestVersion: string, releaseNotes: string, url: string} | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -59,6 +64,50 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   useEffect(() => {
     fetchModels();
   }, [ollamaUrl]);
+
+  useEffect(() => {
+    if (user.role === 'admin') {
+      checkUpdates();
+    }
+  }, [user.role]);
+
+  const checkUpdates = async () => {
+    try {
+      const res = await fetch('/api/admin/check-updates');
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateInfo(data);
+      }
+    } catch (err) {
+      console.error('Failed to check for updates', err);
+    }
+  };
+
+  const applyUpdate = async () => {
+    if (!confirm('Are you sure you want to apply the update? This will download the latest release, extract it, and restart the server.')) return;
+    
+    setIsUpdating(true);
+    setUpdateMessage('Downloading and applying update... Please wait.');
+    try {
+      const res = await fetch('/api/admin/apply-update', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUpdateMessage(data.message || 'Update applied successfully. The server is restarting...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
+      } else {
+        setUpdateMessage(`Update failed: ${data.error}`);
+        setIsUpdating(false);
+      }
+    } catch (err) {
+      console.error('Failed to apply update', err);
+      setUpdateMessage('Failed to apply update. See console for details.');
+      setIsUpdating(false);
+    }
+  };
 
   const fetchModels = async () => {
     setFetchingModels(true);
@@ -334,12 +383,15 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                 setShowAdmin(!showAdmin);
                 setShowSettings(false);
               }}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-colors relative ${
                 showAdmin ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-zinc-700 text-zinc-400'
               }`}
               title="Admin Panel"
             >
               <Users className="w-5 h-5" />
+              {updateInfo?.updateAvailable && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-zinc-800"></span>
+              )}
             </button>
           )}
           <button
@@ -496,6 +548,44 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                   <MessageSquareText className="w-4 h-4" /> View All Global Logs
                 </button>
               </div>
+
+              {/* Update Banner */}
+              {updateInfo?.updateAvailable && (
+                <div className="mb-6 bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 mt-0.5 sm:mt-0">
+                      <Download className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-indigo-300 flex items-center gap-2">
+                        Update Available <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-[10px] font-bold uppercase tracking-wider">{updateInfo.latestVersion}</span>
+                      </h4>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        {updateMessage || 'A new version of Ollama AI UI is available. Please update your deployment to get the latest features and fixes.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <a
+                      href={updateInfo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-1 sm:flex-none text-center"
+                    >
+                      View Release
+                    </a>
+                    <button
+                      onClick={applyUpdate}
+                      disabled={isUpdating}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-1 sm:flex-none flex items-center justify-center gap-2"
+                    >
+                      {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      {isUpdating ? 'Updating...' : 'Apply Update'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-zinc-900 rounded-xl border border-zinc-700 overflow-hidden">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-zinc-800/50 text-zinc-400 border-b border-zinc-700">
