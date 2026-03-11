@@ -1,6 +1,20 @@
-Copyright (c) 2026 Haaris Khan. All rights reserved. This code is confidential and proprietary. No reproduction or distribution allowed.
-1. install ollama
-2. install docker desktop (wsl is included with windows docker desktop wsl2 only)
-3. download this repository source code from releases
-4. bash "docker-compose up -d --build" in folder terminal
-5. go to http://localhost:3000 and it should appear
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/e28bf136-b3d6-4da3-9494-5eabe0bd74c2
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
