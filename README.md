@@ -24,8 +24,8 @@ This method allows you to use the **in-app update button** to keep your deployme
    # Install PM2 globally if you haven't
    npm install -g pm2
    
-   # Start the app (Windows syntax)
-   pm2 start npm --name "ollama-ai-ui" -- run start
+   # Start the app using the config file (Works on all OS)
+   pm2 start ecosystem.config.cjs
    ```
 
 The app will be available at `http://localhost:3000`.
