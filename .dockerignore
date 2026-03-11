@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-server
+.git
+.env
+data
+ollama-webui.db
+ollama-webui.db-journal

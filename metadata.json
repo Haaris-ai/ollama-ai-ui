@@ -1,0 +1,5 @@
+{
+  "name": "Ollama WebUI",
+  "description": "A Docker-ready web interface for Ollama with username-based authentication (no email required).",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  webui:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=change_this_secret_in_production
+      - DB_PATH=/app/data/ollama-webui.db
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Allow container to access host Ollama
