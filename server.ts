@@ -196,6 +196,28 @@ app.patch('/api/admin/users/:id/toggle-block', authenticateToken, requireAdmin, 
   res.json({ message: 'User block status updated' });
 });
 
+app.delete('/api/users/:id', authenticateToken, (req: any, res: any) => {
+  const targetUserId = parseInt(req.params.id);
+  const requestingUserId = req.user.id;
+  const requestingUserRole = req.user.role;
+
+  if (targetUserId !== requestingUserId && requestingUserRole !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: You can only delete your own account unless you are an admin' });
+  }
+
+  try {
+    // Delete user's chat logs first to maintain referential integrity
+    db.prepare('DELETE FROM chat_logs WHERE user_id = ?').run(targetUserId);
+    // Delete the user
+    db.prepare('DELETE FROM users WHERE id = ?').run(targetUserId);
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 // Ollama Proxy Routes
 app.post('/api/ollama/generate', authenticateToken, async (req: any, res: any) => {
   const { prompt, model, stream, options, ollamaUrl, webSearch } = req.body;

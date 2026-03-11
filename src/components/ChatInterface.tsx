@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Settings as SettingsIcon, LogOut, Loader2, RefreshCw, Users, Shield, Ban, CheckCircle, X, Globe, MessageSquareText } from 'lucide-react';
+import { Send, Bot, User, Settings as SettingsIcon, LogOut, Loader2, RefreshCw, Users, Shield, Ban, CheckCircle, X, Globe, MessageSquareText, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 
@@ -40,6 +40,11 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [chatLayout, setChatLayout] = useState<'bubble' | 'minimal'>('bubble');
   const [chatWidth, setChatWidth] = useState<'normal' | 'wide'>('normal');
+
+  // Deletion State
+  const [deleteSelfModalOpen, setDeleteSelfModalOpen] = useState(false);
+  const [deleteUserModalOpen, setDeleteUserModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +136,38 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
       }
     } catch (err) {
       console.error('Failed to block user', err);
+    }
+  };
+
+  const deleteSelfAccount = async () => {
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        onLogout(); // Log the user out after successful deletion
+      }
+    } catch (err) {
+      console.error('Failed to delete account', err);
+    }
+  };
+
+  const deleteUserAccount = async () => {
+    if (!userToDelete) return;
+    try {
+      const res = await fetch(`/api/users/${userToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchAdminUsers();
+        setDeleteUserModalOpen(false);
+        setUserToDelete(null);
+        if (userToDelete.id === user.id) {
+          onLogout(); // If admin deletes themselves
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete user', err);
     }
   };
 
@@ -414,6 +451,25 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                   </div>
                 </div>
               )}
+
+              {/* Danger Zone */}
+              <div className="pt-6 border-t border-zinc-700">
+                <h3 className="font-medium mb-4 flex items-center gap-2 text-red-400">
+                  <AlertTriangle className="w-4 h-4" /> Danger Zone
+                </h3>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-zinc-200">Delete Account</h4>
+                    <p className="text-xs text-zinc-400 mt-1">Permanently delete your account and all your chat history.</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteSelfModalOpen(true)}
+                    className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
+                  >
+                    Delete Account
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -490,15 +546,25 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                           {u.id !== user.id && u.role !== 'admin' && (
                             <button
                               onClick={() => toggleBlockUser(u)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors mr-2 ${
                                 u.is_blocked 
                                   ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' 
-                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'
+                                  : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400'
                               }`}
                             >
                               {u.is_blocked ? 'Unblock' : 'Block'}
                             </button>
                           )}
+                          <button
+                            onClick={() => {
+                              setUserToDelete(u);
+                              setDeleteUserModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-red-500/10 hover:bg-red-500/20 text-red-400"
+                            title="Delete User"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -569,6 +635,96 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
                 >
                   Confirm Block
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Self Modal */}
+      <AnimatePresence>
+        {deleteSelfModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-800 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-zinc-700 bg-zinc-800/50">
+                <h3 className="font-medium flex items-center gap-2 text-red-400">
+                  <AlertTriangle className="w-4 h-4" /> Delete Account
+                </h3>
+                <button 
+                  onClick={() => setDeleteSelfModalOpen(false)}
+                  className="p-1 hover:bg-zinc-700 rounded-lg text-zinc-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-zinc-300">
+                  Are you sure you want to delete your account? This action is <strong>permanent</strong> and cannot be undone. All your chat history will be lost.
+                </p>
+              </div>
+              <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteSelfModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteSelfAccount}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                >
+                  Yes, Delete My Account
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete User Modal (Admin) */}
+      <AnimatePresence>
+        {deleteUserModalOpen && userToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-800 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-zinc-700 bg-zinc-800/50">
+                <h3 className="font-medium flex items-center gap-2 text-red-400">
+                  <AlertTriangle className="w-4 h-4" /> Delete User
+                </h3>
+                <button 
+                  onClick={() => setDeleteUserModalOpen(false)}
+                  className="p-1 hover:bg-zinc-700 rounded-lg text-zinc-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-zinc-300">
+                  Are you sure you want to delete the user <strong>{userToDelete.username}</strong>? This action is permanent and will delete all their chat history.
+                </p>
+              </div>
+              <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteUserModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteUserAccount}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                >
+                  Delete User
                 </button>
               </div>
             </motion.div>
