@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --platform=node --packages=external --format=esm --outfile=dist-server/server.js",
-    "start": "NODE_ENV=production node dist-server/server.js",
+    "start": "cross-env NODE_ENV=production node dist-server/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
@@ -20,6 +20,7 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.4.1",
     "cookie-parser": "^1.4.7",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "googlethis": "^1.8.0",
