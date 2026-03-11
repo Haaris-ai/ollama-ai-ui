@@ -199,7 +199,7 @@ app.patch('/api/admin/users/:id/toggle-block', authenticateToken, requireAdmin, 
 // Ollama Proxy Routes
 app.post('/api/ollama/generate', authenticateToken, async (req: any, res: any) => {
   const { prompt, model, stream, options, ollamaUrl, webSearch } = req.body;
-  const targetUrl = ollamaUrl || 'http://host.docker.internal:11434'; // Default for Docker
+  const targetUrl = ollamaUrl || process.env.OLLAMA_URL || 'http://host.docker.internal:11434'; // Default for Docker
 
   if (prompt) {
     db.prepare('INSERT INTO chat_logs (user_id, message) VALUES (?, ?)').run(req.user.id, prompt);
@@ -263,7 +263,7 @@ app.post('/api/ollama/generate', authenticateToken, async (req: any, res: any) =
 
 app.post('/api/ollama/chat', authenticateToken, async (req: any, res: any) => {
   const { messages, model, stream, options, ollamaUrl, webSearch } = req.body;
-  const targetUrl = ollamaUrl || 'http://host.docker.internal:11434';
+  const targetUrl = ollamaUrl || process.env.OLLAMA_URL || 'http://host.docker.internal:11434';
 
   const lastMessage = messages[messages.length - 1];
   if (lastMessage && lastMessage.role === 'user') {
@@ -324,7 +324,7 @@ app.post('/api/ollama/chat', authenticateToken, async (req: any, res: any) => {
 });
 
 app.get('/api/ollama/tags', authenticateToken, async (req: any, res: any) => {
-  const ollamaUrl = req.query.url || 'http://host.docker.internal:11434';
+  const ollamaUrl = req.query.url || process.env.OLLAMA_URL || 'http://host.docker.internal:11434';
   try {
     const response = await fetch(`${ollamaUrl}/api/tags`);
     if (!response.ok) throw new Error('Failed to fetch tags');
