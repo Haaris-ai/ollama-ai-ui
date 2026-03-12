@@ -55,6 +55,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
 app.use(express.json());
 app.use(cookieParser());
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.send('Server is running!');
+});
+
 // Middleware to verify JWT
 const authenticateToken = (req: any, res: any, next: any) => {
   const token = req.cookies.token;
@@ -454,10 +459,19 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(vite.middlewares);
 } else {
   // Serve static files in production
-  const distPath = path.resolve(__dirname, __dirname.endsWith('dist-server') ? '../dist' : 'dist');
+  const distPath = path.resolve(__dirname, __dirname.includes('dist-server') ? '../dist' : 'dist');
+  console.log(`Serving static files from: ${distPath}`);
+  if (!fs.existsSync(distPath)) {
+    console.error(`ERROR: Static files directory not found at: ${distPath}`);
+  }
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(distPath, 'index.html'));
+    const indexPath = path.resolve(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send('GUI files not found. Please run "npm run build" first.');
+    }
   });
 }
 
