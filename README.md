@@ -18,8 +18,13 @@ This is the easiest way to get started and includes **automatic updates** using 
 
 2. **Using Docker Run**:
    ```bash
-   docker run -d -p 3000:3000 --name ollama-ai-ui -v ./data:/app/data haaris-ai/ollama-ai-ui:latest
+   docker run -d -p 3000:3000 --name ollama-ai-ui -v ./data:/app/data ghcr.io/haaris-ai/ollama-ai-ui:latest
    ```
+
+### Automated Updates
+This project is configured to automatically build and push Docker images to the **GitHub Container Registry (GHCR)** whenever a new release is published.
+
+The included `docker-compose.yml` uses **Watchtower** to monitor the GHCR image and automatically update your running container within 5 minutes of a new release.
 
 The app will be available at `http://localhost:3000`.
 
