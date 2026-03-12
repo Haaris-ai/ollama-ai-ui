@@ -3,11 +3,10 @@ name: Docker Publish
 on:
   release:
     types: [published]
-  workflow_dispatch: # Allows you to run it manually from the "Actions" tab
+  workflow_dispatch: 
 
 env:
   REGISTRY: ghcr.io
-  # This uses your repo name (e.g., username/repo-name)
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -43,5 +42,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ id.meta.outputs.tags }}
-          labels: ${{ id.meta.outputs.labels }}
+          # FIXED: Changed 'id.meta' to 'steps.meta'
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
